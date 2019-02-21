@@ -1,0 +1,107 @@
+# Regression Models Course Project 
+## Summary 
+
+This report is a course project for the Regression Models Course on the Data Science Specialization by Johns Hopkins University on Coursera. In this analysis it is examined which is better for miles per gallon consumption (MPG) for a car, an automatic or a manual transmission, through statstical analysis. We used the mtcars dataset, which is a part of R's datasets. The data, in the dataset, was extracted from the 1974 Motor Trend US magazine, and comprises fuel consumption and 10 aspects of automobile design and performance for 32 automobiles (1973-74 models).
+It was concluded, that the cars with automatic transmission have a lower fuel consumption, by 2.936 miles per gallon, as it resulted from multivariate linear regression analysis. 
+
+### Instructions  
+
+You work for Motor Trend, a magazine about the automobile industry. Looking at a data set of a collection of cars, they are interested in exploring the relationship between a set of variables and miles per gallon (MPG) (outcome). They are particularly interested in the following two questions:
+
+1. "Is an automatic or manual transmission better for MPG"
+2. "Quantify the MPG difference between automatic and manual transmissions" 
+
+## Exploratory Analysis 
+
+Firstly, the needed libraries are loaded in R. 
+```{r}
+library(datasets)
+library(dplyr)
+library(ggplot2)
+```
+
+Then the mtcars dataset is loaded and the characteristics of the variables in it are explored, and especially of the mpg variables thet is significant for the analysis. 
+```{r}
+mt <- mtcars
+head(mt)
+str(mt)
+summary(mt$mpg)
+```
+
+The variable mpg is numeric and refers to the miles per galon consumption and the variable am is a numeric variable with the values 0 and 1, that shows wether a car has an automatic or a manual transmission. 
+
+We transform the am variable to fator variale with levels 0 and 1 and a  boxplot is made to compare each value of the am variable with the miles per gallon consumption variable mpg. 
+
+```{r}
+mt$am <- as.factor(mt$am)
+levels(mt$am) <- c("auto", "manual")
+boxplot(mpg ~ am, data = mt, xlab = "Transmission Type", col = c("blue", "red"), ylab = "Miles per Gallon", main = "Boxplot of MPG vs. Transmission")
+``` 
+
+In the above boxplot we can see there is a difference between the miles per gallon consumption for each type of transmission, with the manual type of transmission appearing to have a significantly larger fuel consumption than the auto type transmission. 
+
+## Regression Analysis 
+
+At first, the mean value of MPG is calculated for automatic and manual transmission types.  
+```{r}
+aggregate(mpg~am, data = mt, mean)
+```
+
+It seems that the cars with the automatic transmission have an MPG 7.24 lower than those that have a manual transmission. To determine if this is a signifiant difference a t-test is used. 
+
+```{r}
+auto <- mt[mt$am == "auto", ]
+manual <- mt[mt$am == "manual", ]
+t.test(auto$mpg, manual$mpg) 
+```
+The p-value < 0.05 which means that the difference between the means of the MPG for each type of transmission is stastically significant. 
+
+Firstly a simple linear model between the MPG and the transmission type is made. 
+```{r}
+fit <- lm(mpg ~ am, data = mt)
+summary(fit) 
+```
+It is shown here that the average MPG for automatic is 17.15 MPG, while manual is 7.25 MPG higher. $R^{2} = 0.36$, suggesting that only 36% of variance in MPG can be attributed to transmission type alone. 
+
+Consiquently, a multivariate linear regression is attempted for the variance of the model to be more accurately explained. 
+Firstly, a model with all the variables of the dataset included is considered, and then, a variable selection process is made to choose the most apropriate variables for the model. A backwards selection process is attempted, using the AIC (Akaike Information Criterion).  
+
+```{r}
+fitm2 <- lm(mpg ~ am + cyl + disp + hp + wt + qsec + drat + vs + gear + carb, data = mt) 
+bestmod <- step(fitm2, direction = "backward")
+```
+
+It can be seen that the model with lowest AIC is lm(formula = mpg ~ am + wt + qsec, data = mt). 
+
+```{r}
+fitbest <- lm(mpg ~ am + wt +qsec, data = mt)
+summary(fitbest)
+```
+In this model, adjusted $R^{2} = 0.8336$, which means that 83.36% of the variance of MPG is explained by this model. It also can be seen that all the variable coefficients (except for the intercept), are statistically significant. 
+
+An ANOVA test is made to compare the simple linear model, and the multivariate model. 
+```{r}
+anova(fit, fitbest)
+```
+
+The p-value is significant fot the fitbest model in comparison with the simple linear fit model, hence we reject the null hypothesis that the variables qsec and wt do not contribute to the accuracy of the model.
+
+## Residuals and Diagnostics 
+
+Below, we explore residual plots of the regression model we chose and also compute some of the regression diagnostics of the model to uncover possible outliers in the data set.
+
+```{r}
+par(mfrow = c(2,2))
+plot(fitbest)
+```
+
+### Interpretation 
+- Residuals vs Fitted plot: It can be seen that the residuals bounce randomly around the 0 line, which suggests that the assumption that the relationship is linear is reasonable. Considering outlier points, there can be seen a small number of points that dont follow the basic random patterns of residuals. Also the residuals form roughly a horizontal band around the 0 line, which suggests that the variances of the the error terms are equal. This is not entirely true, as it can be seen that the points are more spread around the 0 line as the values increase, which shows that the variances of the error terms increase slightly with the increase of fitted values. 
+- Scale-Location plot: This plot shows if residuals are spread equally along the ranges of predictors, to check the assumption of homoscedasticity (equal variance). It can be seen that as the fitted values increase the residuals begin to spread a little wider, which causes the smooth line to have a small point, which confirms the observation of the previous plot. 
+- Normal Q-Q plot: According to the plot, the residuals seem to be norally distributed, in general. There is a number of points that deviate a little, but generally they follow a straigth line. 
+- Residulas vs Leverage plot: It can be seen that there is no outlier point with great influence, outside Cook's distance. There is, though, one point which is near Cook's distance, which should be checked furtherly. 
+- Even though the residual diagnostics plots helped our model to be examined and evaluated, there has to be attention in the interpretation as the observations numbers and as a result the sample size is fairly small in this dataset. 
+
+## Conclusion 
+
+It appears that the miles per gallon consumption is better (lower) for cars with automatic transmission comparing with these with manual transmissions. The simple linear model between mpg and am shows that manual transmission cars consume 7.245 miles per gallon of fuel more than automatic transmission cars. However, multivariate analysis which includes am, wt and qsec as variables and mpg as the outcome, explaines the variance of the mpg in a better way than the simple linear model. According to the latter model, the manual transimission cars consume 2.936 miles per gallon of fuel more than the automatic transmission cars. 
